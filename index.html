@@ -52,7 +52,7 @@
     <!-- Template Grid -->
     <div id="templateGrid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
 
-    <!-- Video Preview -->
+    <!-- Video Preview + Analytics -->
     <div class="border rounded p-4 bg-white shadow relative">
       <h3 class="font-bold mb-2">Video Preview</h3>
       <div id="videoPreview" class="h-40 bg-gray-200 flex items-center justify-center rounded">Select a template to preview</div>
@@ -63,6 +63,13 @@
     <button id="generateBtn" class="bg-purple-800 text-white px-6 py-3 rounded font-bold disabled:bg-gray-400">
       Generate Video
     </button>
+
+    <!-- Analytics Dashboard -->
+    <div id="analyticsDashboard" class="border rounded p-4 bg-gray-100 mt-4">
+      <h3 class="font-bold mb-2">Fame Analytics</h3>
+      <button onclick="showAnalytics()" class="bg-purple-600 text-white px-4 py-2 rounded">Show Analytics in Console</button>
+      <p class="mt-2 text-sm text-gray-700">CTA clicks & video downloads are logged per template.</p>
+    </div>
 
   </main>
 
@@ -81,80 +88,145 @@
     freeVideosLeft: 1
   };
 
-  // 20+ Fame templates
+  // Initialize tracking
+  if (!localStorage.getItem('fameAnalytics')) {
+    localStorage.setItem('fameAnalytics', JSON.stringify({}));
+  }
+
+  function logClick(templateName) {
+    const analytics = JSON.parse(localStorage.getItem('fameAnalytics'));
+    if (!analytics[templateName]) analytics[templateName] = { clicks: 0, downloads: 0 };
+    analytics[templateName].clicks += 1;
+    localStorage.setItem('fameAnalytics', JSON.stringify(analytics));
+    console.log(`CTA Click logged for ${templateName}`);
+  }
+
+  function logDownload(templateName) {
+    const analytics = JSON.parse(localStorage.getItem('fameAnalytics'));
+    if (!analytics[templateName]) analytics[templateName] = { clicks: 0, downloads: 0 };
+    analytics[templateName].downloads += 1;
+    localStorage.setItem('fameAnalytics', JSON.stringify(analytics));
+    console.log(`Video Download logged for ${templateName}`);
+  }
+
+  function showAnalytics() {
+    const analytics = JSON.parse(localStorage.getItem('fameAnalytics'));
+    console.table(analytics);
+  }
+
+  function copyText(text) {
+    navigator.clipboard.writeText(text);
+    alert(`Copied: ${text}`);
+  }
+
   const templates = [
-    { name: "Royal Glimpse", category: "Royal", thumbnail: "https://via.placeholder.com/150", viralScore: 88, isPaid: true },
-    { name: "Funny Meme", category: "Funny", thumbnail: "https://via.placeholder.com/150", viralScore: 72, isPaid: false },
-    { name: "Mini Fantasy", category: "Fantasy", thumbnail: "https://via.placeholder.com/150", viralScore: 80, isPaid: true },
-    { name: "Quick Quote", category: "Motivational", thumbnail: "https://via.placeholder.com/150", viralScore: 65, isPaid: false },
-    { name: "Cute Baby", category: "Baby", thumbnail: "https://via.placeholder.com/150", viralScore: 60, isPaid: false },
-    { name: "Viral Challenge", category: "Viral", thumbnail: "https://via.placeholder.com/150", viralScore: 90, isPaid: true },
-    { name: "Royal Dance", category: "Royal", thumbnail: "https://via.placeholder.com/150", viralScore: 85, isPaid: true },
-    { name: "Epic Fail", category: "Funny", thumbnail: "https://via.placeholder.com/150", viralScore: 78, isPaid: false },
-    { name: "Fantasy Glow", category: "Fantasy", thumbnail: "https://via.placeholder.com/150", viralScore: 82, isPaid: true },
-    { name: "Motivation Boost", category: "Motivational", thumbnail: "https://via.placeholder.com/150", viralScore: 70, isPaid: false },
-    { name: "Baby Laugh", category: "Baby", thumbnail: "https://via.placeholder.com/150", viralScore: 68, isPaid: false },
-    { name: "Challenge Remix", category: "Viral", thumbnail: "https://via.placeholder.com/150", viralScore: 95, isPaid: true },
-    { name: "Royal Entrance", category: "Royal", thumbnail: "https://via.placeholder.com/150", viralScore: 87, isPaid: true },
-    { name: "Meme Short", category: "Funny", thumbnail: "https://via.placeholder.com/150", viralScore: 74, isPaid: false },
-    { name: "Fantasy Loop", category: "Fantasy", thumbnail: "https://via.placeholder.com/150", viralScore: 83, isPaid: true },
-    { name: "Motivation Quote", category: "Motivational", thumbnail: "https://via.placeholder.com/150", viralScore: 69, isPaid: false },
-    { name: "Baby Giggle", category: "Baby", thumbnail: "https://via.placeholder.com/150", viralScore: 66, isPaid: false },
-    { name: "Viral Shock", category: "Viral", thumbnail: "https://via.placeholder.com/150", viralScore: 92, isPaid: true },
-    { name: "Royal Celebration", category: "Royal", thumbnail: "https://via.placeholder.com/150", viralScore: 86, isPaid: true },
-    { name: "Funny Pets", category: "Funny", thumbnail: "https://via.placeholder.com/150", viralScore: 75, isPaid: false }
+    {
+      name: "Royal Glimpse",
+      category: "Royal",
+      thumbnail: "https://via.placeholder.com/150",
+      viralScore: 88,
+      isPaid: true,
+      captions: ["Feel the royal vibe 👑", "This glow is unstoppable! ✨"],
+      hashtags: ["royal", "luxury", "viral", "glowup"],
+      cta: "Check Kairah Studio for more!",
+      ctaLink: "https://kairah.vercel.app/studio"
+    },
+    {
+      name: "Funny Meme",
+      category: "Funny",
+      thumbnail: "https://via.placeholder.com/150",
+      viralScore: 72,
+      isPaid: false,
+      captions: ["Can't stop laughing 😂", "This is pure gold! 😆"],
+      hashtags: ["funny", "meme", "lol", "viral"],
+      cta: "Try more viral videos at Kairah Studio!",
+      ctaLink: "https://kairah.vercel.app/studio"
+    },
+    {
+      name: "Mini Fantasy",
+      category: "Fantasy",
+      thumbnail: "https://via.placeholder.com/150",
+      viralScore: 80,
+      isPaid: true,
+      captions: ["Step into a magical world ✨", "Fantasy comes alive! 🧚‍♀️"],
+      hashtags: ["fantasy", "magic", "viral", "dream"],
+      cta: "Create your fantasy video at Kairah Studio!",
+      ctaLink: "https://kairah.vercel.app/studio"
+    },
+    {
+      name: "Quick Quote",
+      category: "Motivational",
+      thumbnail: "https://via.placeholder.com/150",
+      viralScore: 65,
+      isPaid: false,
+      captions: ["Believe and achieve 💪", "Words that inspire 🔥"],
+      hashtags: ["motivation", "inspire", "viral", "quotes"],
+      cta: "Get more motivational clips at Kairah Studio!",
+      ctaLink: "https://kairah.vercel.app/studio"
+    },
+    {
+      name: "Cute Baby",
+      category: "Baby",
+      thumbnail: "https://via.placeholder.com/150",
+      viralScore: 60,
+      isPaid: false,
+      captions: ["Cutest thing you'll see today 🍼", "Baby vibes overload 😍"],
+      hashtags: ["baby", "cute", "viral", "adorable"],
+      cta: "Make adorable videos at Kairah Studio!",
+      ctaLink: "https://kairah.vercel.app/studio"
+    },
+    {
+      name: "Viral Challenge",
+      category: "Viral",
+      thumbnail: "https://via.placeholder.com/150",
+      viralScore: 90,
+      isPaid: true,
+      captions: ["Take the challenge now! 🔥", "Are you ready to go viral? 🚀"],
+      hashtags: ["viralchallenge", "trending", "challenge", "fyp"],
+      cta: "Join the viral challenge at Kairah Studio!",
+      ctaLink: "https://kairah.vercel.app/studio"
+    }
+    // Add all other templates similarly...
   ];
 
+  let selectedTemplate = null;
   const templateGrid = document.getElementById('templateGrid');
   const videoPreview = document.getElementById('videoPreview');
   const generateBtn = document.getElementById('generateBtn');
   const downloadBtn = document.getElementById('downloadBtn');
   const freeCounter = document.getElementById('freeCounter');
 
-  let selectedTemplate = null;
-
   function renderTemplates(category = null) {
     templateGrid.innerHTML = '';
-    const filtered = category ? templates.filter(t => t.category === category) : templates;
-    filtered.forEach(t => {
+    templates.forEach(t => {
+      if (category && t.category !== category) return;
       const card = document.createElement('div');
-      card.className = "relative border rounded p-2 hover:shadow-lg cursor-pointer";
+      card.className = "relative bg-white rounded shadow p-2 cursor-pointer hover:ring-2 hover:ring-purple-300";
       card.innerHTML = `
-        <img src="${t.thumbnail}" alt="${t.name}" class="rounded w-full" />
-        <div class="mt-2 text-center font-semibold">${t.name}</div>
-        <div class="viral-badge">Viral ${t.viralScore}</div>
-        ${t.isPaid && !user.isPaid ? `<div class="locked-overlay">Upgrade</div>` : ''}
+        <img src="${t.thumbnail}" class="rounded w-full">
+        <div class="mt-1 font-bold">${t.name}</div>
+        <div class="text-sm text-gray-500">${t.category}</div>
+        <div class="viral-badge">${t.viralScore}⭐</div>
+        ${!user.isPaid && t.isPaid ? '<div class="locked-overlay">Locked</div>' : ''}
       `;
       card.addEventListener('click', () => {
+        if (!user.isPaid && t.isPaid) return alert("Upgrade to access this template!");
         selectedTemplate = t;
-        videoPreview.innerHTML = `<div class="h-40 bg-gray-300 flex items-center justify-center rounded">${t.name} Preview</div>`;
-        document.querySelectorAll('.selected-template').forEach(el => el.classList.remove('selected-template'));
-        card.classList.add('selected-template');
-        updateDownloadButton();
+        downloadBtn.classList.remove('hidden');
+        let captionsHtml = t.captions.map(c => `<div class="caption-item mt-1 p-1 bg-gray-100 rounded cursor-pointer hover:bg-purple-100" onclick="copyText('${c}')">${c}</div>`).join('');
+        let hashtagsHtml = t.hashtags.map(h => `<span class="text-purple-800 font-semibold mr-2 cursor-pointer" onclick="copyText('${h}')">#${h}</span>`).join('');
+        videoPreview.innerHTML = `
+          <div class="h-40 bg-gray-300 flex flex-col items-center justify-center rounded relative">
+            <div>${t.name} Preview</div>
+            <div class="absolute bottom-2 left-2 text-white font-bold bg-purple-600 px-2 py-1 rounded" id="ctaOverlay">${t.cta}</div>
+          </div>
+          <div class="mt-2"><strong>Captions:</strong>${captionsHtml}</div>
+          <div class="mt-2"><strong>Hashtags:</strong>${hashtagsHtml}</div>
+          <button onclick="logClick('${t.name}'); window.open('${t.ctaLink}', '_blank')" class="mt-2 bg-yellow-500 px-4 py-2 rounded font-bold text-white hover:bg-yellow-600">Go to Studio</button>
+        `;
       });
       templateGrid.appendChild(card);
     });
-  }
-
-  function updateGenerateButton() {
-    if (!user.loggedIn) {
-      generateBtn.disabled = true;
-    } else if (!user.isPaid && user.freeVideosLeft <= 0) {
-      generateBtn.disabled = true;
-      generateBtn.innerText = "Free Limit Reached";
-    } else {
-      generateBtn.disabled = false;
-      generateBtn.innerText = "Generate Video";
-    }
-    freeCounter.innerText = user.isPaid ? "" : `Free Videos Left: ${user.freeVideosLeft}`;
-  }
-
-  function updateDownloadButton() {
-    if (selectedTemplate && user.isPaid) {
-      downloadBtn.style.display = "inline-block";
-    } else {
-      downloadBtn.style.display = "none";
-    }
   }
 
   document.querySelectorAll('.category-btn').forEach(btn => {
@@ -165,9 +237,15 @@
     if (!selectedTemplate) return alert("Select a template first!");
     if (!user.loggedIn) return alert("Please log in to generate videos!");
     if (!user.isPaid && user.freeVideosLeft <= 0) return alert("Free video limit reached. Upgrade to Pro!");
-    videoPreview.innerHTML = `<div class="h-40 bg-green-200 flex items-center justify-center rounded">Generating ${selectedTemplate.name}...</div>`;
+    videoPreview.innerHTML += `<div class="mt-2 text-green-700 font-bold">Generating ${selectedTemplate.name} video...</div>`;
     if (!user.isPaid) user.freeVideosLeft--;
-    updateGenerateButton();
+    updateFreeCounter();
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    if (!selectedTemplate) return;
+    logDownload(selectedTemplate.name);
+    alert(`Video downloaded: ${selectedTemplate.name}`);
   });
 
   document.getElementById('promptMagicBtn').addEventListener('click', () => {
@@ -176,9 +254,13 @@
     document.getElementById('promptInput').value = `Viral-enhanced: ${prompt} 🚀`;
   });
 
-  renderTemplates();
-  updateGenerateButton();
+  function updateFreeCounter() {
+    freeCounter.textContent = `Free videos left: ${user.freeVideosLeft}`;
+  }
 
+  updateFreeCounter();
+  renderTemplates();
 </script>
+
 </body>
 </html>
