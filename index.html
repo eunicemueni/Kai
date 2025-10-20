@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kairah Studio + Fame</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 font-sans">
+
+  <!-- Header -->
+  <header class="bg-white shadow p-4 flex justify-between items-center">
+    <div class="text-2xl font-bold text-purple-800">Kairah</div>
+    <nav class="space-x-6">
+      <a href="#" class="text-gray-700 hover:text-purple-800">Studio</a>
+      <a href="#" class="text-gray-700 hover:text-purple-800">Fame</a>
+      <a href="#" class="text-gray-700 hover:text-purple-800">Pricing</a>
+      <a href="#" class="text-gray-700 hover:text-purple-800">Login</a>
+    </nav>
+  </header>
+
+  <div class="flex mt-6 px-6 gap-6">
+
+    <!-- Sidebar: Categories -->
+    <aside class="w-48 bg-white rounded shadow p-4">
+      <h2 class="font-bold mb-4">Categories</h2>
+      <ul class="space-y-2">
+        <li><button class="w-full text-left px-2 py-1 rounded hover:bg-purple-100">Funny</button></li>
+        <li><button class="w-full text-left px-2 py-1 rounded hover:bg-purple-100">Baby</button></li>
+        <li><button class="w-full text-left px-2 py-1 rounded hover:bg-purple-100">Royal</button></li>
+        <li><button class="w-full text-left px-2 py-1 rounded hover:bg-purple-100">Fantasy</button></li>
+        <li><button class="w-full text-left px-2 py-1 rounded hover:bg-purple-100">Motivational</button></li>
+        <li><button class="w-full text-left px-2 py-1 rounded hover:bg-purple-100">Viral</button></li>
+      </ul>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 space-y-6">
+
+      <!-- Prompt Box -->
+      <div class="flex gap-2">
+        <input type="text" placeholder="Type your idea here..." class="flex-1 border rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400" />
+        <button class="bg-yellow-500 text-white px-4 py-2 rounded font-bold">Prompt Magic</button>
+      </div>
+
+      <!-- Template Grid -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <!-- Example template card -->
+        <div class="relative border rounded p-2 hover:shadow-lg">
+          <img src="https://via.placeholder.com/150" alt="Template" class="rounded w-full" />
+          <div class="mt-2 text-center font-semibold">Royal Glimpse</div>
+          <div class="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold">Upgrade</div>
+        </div>
+        <div class="relative border rounded p-2 hover:shadow-lg">
+          <img src="https://via.placeholder.com/150" alt="Template" class="rounded w-full" />
+          <div class="mt-2 text-center font-semibold">Funny Meme</div>
+          <!-- No overlay, free template -->
+        </div>
+        <div class="relative border rounded p-2 hover:shadow-lg">
+          <img src="https://via.placeholder.com/150" alt="Template" class="rounded w-full" />
+          <div class="mt-2 text-center font-semibold">Mini Fantasy</div>
+          <div class="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold">Upgrade</div>
+        </div>
+        <div class="relative border rounded p-2 hover:shadow-lg">
+          <img src="https://via.placeholder.com/150" alt="Template" class="rounded w-full" />
+          <div class="mt-2 text-center font-semibold">Quick Quote</div>
+        </div>
+        <!-- Add more templates as needed -->
+      </div>
+
+      <!-- Video Preview -->
+      <div class="border rounded p-4 bg-white shadow">
+        <h3 class="font-bold mb-2">Video Preview</h3>
+        <div class="h-40 bg-gray-200 flex items-center justify-center rounded">Video Preview Area</div>
+      </div>
+
+      <!-- Generate Button -->
+      <button class="bg-purple-800 text-white px-6 py-3 rounded font-bold disabled:bg-gray-400">
+        Generate Video
+      </button>
+
+    </main>
+
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-white shadow mt-6 p-4 text-center text-gray-600">
+    © 2025 Kairah. Contact | About | Social Links
+  </footer>
+
+</body>
+</html>
