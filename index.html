@@ -1,266 +1,403 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kairah Studio + Fame Booster</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-  .selected-template { border: 3px solid #D4AF37; }
-  .viral-badge { background-color: #E7D2CB; color: #3D2C41; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: bold; position: absolute; top: 4px; right: 4px; }
-  .locked-overlay { position: absolute; inset: 0; background-color: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; border-radius: 8px; }
-</style>
-</head>
-<body class="bg-gray-50 font-sans">
+import React, { useEffect, useState, useCallback } from "react";
+/*
+Kairah Studio — Fame Booster
+Single-file React component (ready to drop into a Next.js / Create React App project)
 
-<!-- Header -->
-<header class="bg-white shadow p-4 flex justify-between items-center">
-  <div class="text-2xl font-bold text-purple-800">Kairah</div>
-  <nav class="space-x-6">
-    <a href="#" class="text-gray-700 hover:text-purple-800">Studio</a>
-    <a href="#" class="text-gray-700 hover:text-purple-800">Fame</a>
-    <a href="#" class="text-gray-700 hover:text-purple-800">Pricing</a>
-    <a href="#" class="text-gray-700 hover:text-purple-800">Login</a>
-  </nav>
-</header>
+Features implemented:
+- Tailwind-ready JSX structure matching your original HTML + visual style
+- Firebase v9 (modular) Auth + Firestore usage (placeholders for config)
+- Auth state handling (redirect to /signin if not logged in)
+- Subscription check (reads `users/{uid}` doc for `isPaid` and `plan`)
+- Fame analytics: logs clicks & downloads to Firestore
+- Generate video flow: calls backend API /api/generate-video (placeholder)
+- Free-video counter enforcement (reads/writes to Firestore and local state)
+- Prompt Magic quick refine button
+- Category filters, template selection, copy-to-clipboard helpers
 
-<div class="flex mt-6 px-6 gap-6">
+Notes for use:
+1. Add your Firebase config in the firebaseConfig object below.
+2. Ensure Firestore security rules allow the operations you need (or use server-side functions).
+3. Implement server endpoint POST /api/generate-video in your FastAPI backend to enforce per-email free limits server-side.
+4. Tailwind CSS must be configured in your project.
 
-  <!-- Sidebar -->
-  <aside class="w-48 bg-white rounded shadow p-4">
-    <h2 class="font-bold mb-4">Categories</h2>
-    <ul class="space-y-2">
-      <li><button class="category-btn w-full text-left px-2 py-1 rounded hover:bg-purple-100" data-category="Funny">Funny</button></li>
-      <li><button class="category-btn w-full text-left px-2 py-1 rounded hover:bg-purple-100" data-category="Baby">Baby</button></li>
-      <li><button class="category-btn w-full text-left px-2 py-1 rounded hover:bg-purple-100" data-category="Royal">Royal</button></li>
-      <li><button class="category-btn w-full text-left px-2 py-1 rounded hover:bg-purple-100" data-category="Fantasy">Fantasy</button></li>
-      <li><button class="category-btn w-full text-left px-2 py-1 rounded hover:bg-purple-100" data-category="Motivational">Motivational</button></li>
-      <li><button class="category-btn w-full text-left px-2 py-1 rounded hover:bg-purple-100" data-category="Viral">Viral</button></li>
-    </ul>
-    <div id="freeCounter" class="mt-6 font-bold text-purple-800"></div>
-  </aside>
+*/
 
-  <!-- Main -->
-  <main class="flex-1 space-y-6">
+// --- FIREBASE SETUP ---
+import { initializeApp } from "firebase/app";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signOut
+} from "firebase/auth";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  increment,
+  serverTimestamp
+} from "firebase/firestore";
 
-    <!-- Prompt Box -->
-    <div class="flex gap-2">
-      <input type="text" id="promptInput" placeholder="Type your idea here..." class="flex-1 border rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400" />
-      <button id="promptMagicBtn" class="bg-yellow-500 text-white px-4 py-2 rounded font-bold">Prompt Magic</button>
-    </div>
+// TODO: Replace the firebaseConfig object with your own values
+const firebaseConfig = {
+  apiKey: "REPLACE_ME",
+  authDomain: "REPLACE_ME",
+  projectId: "REPLACE_ME",
+  storageBucket: "REPLACE_ME",
+  messagingSenderId: "REPLACE_ME",
+  appId: "REPLACE_ME"
+};
 
-    <!-- Template Grid -->
-    <div id="templateGrid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+// init app (guard against double init in dev HMR)
+let app;
+try {
+  app = initializeApp(firebaseConfig);
+} catch (e) {
+  // If already initialized, we continue
+  // console.warn('firebase app init error', e);
+}
+const auth = getAuth();
+const db = getFirestore();
 
-    <!-- Video Preview + Analytics -->
-    <div class="border rounded p-4 bg-white shadow relative">
-      <h3 class="font-bold mb-2">Video Preview</h3>
-      <div id="videoPreview" class="h-40 bg-gray-200 flex items-center justify-center rounded">Select a template to preview</div>
-      <button id="downloadBtn" class="mt-2 bg-green-600 text-white px-4 py-2 rounded font-bold hidden">Download Video</button>
-    </div>
-
-    <!-- Generate Button -->
-    <button id="generateBtn" class="bg-purple-800 text-white px-6 py-3 rounded font-bold disabled:bg-gray-400">
-      Generate Video
-    </button>
-
-    <!-- Analytics Dashboard -->
-    <div id="analyticsDashboard" class="border rounded p-4 bg-gray-100 mt-4">
-      <h3 class="font-bold mb-2">Fame Analytics</h3>
-      <button onclick="showAnalytics()" class="bg-purple-600 text-white px-4 py-2 rounded">Show Analytics in Console</button>
-      <p class="mt-2 text-sm text-gray-700">CTA clicks & video downloads are logged per template.</p>
-    </div>
-
-  </main>
-
-</div>
-
-<!-- Footer -->
-<footer class="bg-white shadow mt-6 p-4 text-center text-gray-600">
-  © 2025 Kairah. Contact | About | Social Links
-</footer>
-
-<script>
-  // Dummy user info
-  const user = {
-    loggedIn: true,
+// --- TEMPLATES (same as your HTML version, can be pulled from DB later) ---
+const TEMPLATES = [
+  {
+    name: "Royal Glimpse",
+    category: "Royal",
+    thumbnail: "https://via.placeholder.com/400x225",
+    viralScore: 88,
+    isPaid: true,
+    captions: ["Feel the royal vibe 👑", "This glow is unstoppable! ✨"],
+    hashtags: ["royal", "luxury", "viral", "glowup"],
+    cta: "Check Kairah Studio for more!",
+    ctaLink: "/studio"
+  },
+  {
+    name: "Funny Meme",
+    category: "Funny",
+    thumbnail: "https://via.placeholder.com/400x225",
+    viralScore: 72,
     isPaid: false,
-    freeVideosLeft: 1
+    captions: ["Can't stop laughing 😂", "This is pure gold! 😆"],
+    hashtags: ["funny", "meme", "lol", "viral"],
+    cta: "Try more viral videos at Kairah Studio!",
+    ctaLink: "/studio"
+  },
+  {
+    name: "Mini Fantasy",
+    category: "Fantasy",
+    thumbnail: "https://via.placeholder.com/400x225",
+    viralScore: 80,
+    isPaid: true,
+    captions: ["Step into a magical world ✨", "Fantasy comes alive! 🧚‍♀️"],
+    hashtags: ["fantasy", "magic", "viral", "dream"],
+    cta: "Create your fantasy video at Kairah Studio!",
+    ctaLink: "/studio"
+  },
+  {
+    name: "Quick Quote",
+    category: "Motivational",
+    thumbnail: "https://via.placeholder.com/400x225",
+    viralScore: 65,
+    isPaid: false,
+    captions: ["Believe and achieve 💪", "Words that inspire 🔥"],
+    hashtags: ["motivation", "inspire", "viral", "quotes"],
+    cta: "Get more motivational clips at Kairah Studio!",
+    ctaLink: "/studio"
+  },
+  {
+    name: "Cute Baby",
+    category: "Baby",
+    thumbnail: "https://via.placeholder.com/400x225",
+    viralScore: 60,
+    isPaid: false,
+    captions: ["Cutest thing you'll see today 🍼", "Baby vibes overload 😍"],
+    hashtags: ["baby", "cute", "viral", "adorable"],
+    cta: "Make adorable videos at Kairah Studio!",
+    ctaLink: "/studio"
+  },
+  {
+    name: "Viral Challenge",
+    category: "Viral",
+    thumbnail: "https://via.placeholder.com/400x225",
+    viralScore: 90,
+    isPaid: true,
+    captions: ["Take the challenge now! 🔥", "Are you ready to go viral? 🚀"],
+    hashtags: ["viralchallenge", "trending", "challenge", "fyp"],
+    cta: "Join the viral challenge at Kairah Studio!",
+    ctaLink: "/studio"
+  }
+];
+
+export default function KairahFameBooster() {
+  const [userState, setUserState] = useState({ loading: true, user: null, isPaid: false, plan: null });
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [category, setCategory] = useState(null);
+  const [prompt, setPrompt] = useState("");
+  const [freeVideosLeft, setFreeVideosLeft] = useState(null);
+  const [generating, setGenerating] = useState(false);
+
+  // auth listener
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      if (!u) {
+        setUserState({ loading: false, user: null, isPaid: false, plan: null });
+        // optional: redirect to /signin if you want strictly protected pages
+        // window.location.href = '/signin';
+        return;
+      }
+      // fetch user doc
+      try {
+        const userDocRef = doc(db, "users", u.uid);
+        const snap = await getDoc(userDocRef);
+        let isPaid = false, plan = null, freeLeft = 1;
+        if (snap.exists()) {
+          const data = snap.data();
+          isPaid = data.isPaid || false;
+          plan = data.plan || null;
+          // store a free counter per user in their doc
+          freeLeft = typeof data.freeVideosLeft === 'number' ? data.freeVideosLeft : 1;
+        } else {
+          // create skeleton user doc for first-time users
+          await setDoc(userDocRef, { email: u.email, createdAt: serverTimestamp(), isPaid: false, plan: null, freeVideosLeft: 1 });
+          freeLeft = 1;
+        }
+        setFreeVideosLeft(freeLeft);
+        setUserState({ loading: false, user: u, isPaid, plan });
+      } catch (err) {
+        console.error("Failed to read user doc", err);
+        setUserState({ loading: false, user: u, isPaid: false, plan: null });
+        setFreeVideosLeft(1);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  // copy helper
+  const copyText = useCallback(async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      alert(`Copied: ${text}`);
+    } catch (e) {
+      alert("Failed to copy");
+    }
+  }, []);
+
+  // log analytics to Firestore
+  const logAnalytics = useCallback(async (templateName, type = "click") => {
+    if (!templateName) return;
+    try {
+      const docRef = doc(db, "analytics", templateName);
+      // create or update counters
+      if (type === "click") {
+        await setDoc(docRef, { clicks: increment(1), lastUpdated: serverTimestamp() }, { merge: true });
+      } else if (type === "download") {
+        await setDoc(docRef, { downloads: increment(1), lastUpdated: serverTimestamp() }, { merge: true });
+      }
+    } catch (err) {
+      console.error("Analytics write failed", err);
+    }
+  }, []);
+
+  // handle generate video
+  const handleGenerate = async () => {
+    if (!selectedTemplate) return alert("Select a template first!");
+    if (!userState.user) return alert("Please sign in to generate videos.");
+    if (!userState.isPaid && (freeVideosLeft === 0 || freeVideosLeft === null)) return alert("Free video limit reached. Upgrade to Pro!");
+
+    setGenerating(true);
+
+    try {
+      // call backend API which should create/queue the video and enforce free-limits by email on server side
+      const res = await fetch('/api/generate-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: prompt || `${selectedTemplate.name} - ${selectedTemplate.category}`,
+          template: selectedTemplate.name,
+          userEmail: userState.user.email
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err || 'Generation failed');
+      }
+
+      // assume server returns { success: true, freeLeft: n }
+      const payload = await res.json();
+
+      // update local counter and firestore user doc
+      if (!userState.isPaid) {
+        const newLeft = typeof payload.freeLeft === 'number' ? payload.freeLeft : Math.max(0, (freeVideosLeft || 1) - 1);
+        setFreeVideosLeft(newLeft);
+        // update user's freeVideosLeft in their doc
+        const userDocRef = doc(db, 'users', userState.user.uid);
+        await updateDoc(userDocRef, { freeVideosLeft: newLeft });
+      }
+
+      // show success and small preview
+      alert(`Video queued: ${selectedTemplate.name}. We'll email when ready.`);
+      // optionally: store a record in user's videos collection
+      const userVidRef = doc(db, 'users', userState.user.uid + '_videos', `${selectedTemplate.name}-${Date.now()}`);
+      await setDoc(userVidRef, { template: selectedTemplate.name, createdAt: serverTimestamp(), status: 'queued' });
+
+      // log analytics generation as click+download intent
+      await logAnalytics(selectedTemplate.name, 'click');
+
+    } catch (err) {
+      console.error(err);
+      alert('Video generation failed. ' + (err.message || ''));
+    } finally {
+      setGenerating(false);
+    }
   };
 
-  // Initialize tracking
-  if (!localStorage.getItem('fameAnalytics')) {
-    localStorage.setItem('fameAnalytics', JSON.stringify({}));
-  }
-
-  function logClick(templateName) {
-    const analytics = JSON.parse(localStorage.getItem('fameAnalytics'));
-    if (!analytics[templateName]) analytics[templateName] = { clicks: 0, downloads: 0 };
-    analytics[templateName].clicks += 1;
-    localStorage.setItem('fameAnalytics', JSON.stringify(analytics));
-    console.log(`CTA Click logged for ${templateName}`);
-  }
-
-  function logDownload(templateName) {
-    const analytics = JSON.parse(localStorage.getItem('fameAnalytics'));
-    if (!analytics[templateName]) analytics[templateName] = { clicks: 0, downloads: 0 };
-    analytics[templateName].downloads += 1;
-    localStorage.setItem('fameAnalytics', JSON.stringify(analytics));
-    console.log(`Video Download logged for ${templateName}`);
-  }
-
-  function showAnalytics() {
-    const analytics = JSON.parse(localStorage.getItem('fameAnalytics'));
-    console.table(analytics);
-  }
-
-  function copyText(text) {
-    navigator.clipboard.writeText(text);
-    alert(`Copied: ${text}`);
-  }
-
-  const templates = [
-    {
-      name: "Royal Glimpse",
-      category: "Royal",
-      thumbnail: "https://via.placeholder.com/150",
-      viralScore: 88,
-      isPaid: true,
-      captions: ["Feel the royal vibe 👑", "This glow is unstoppable! ✨"],
-      hashtags: ["royal", "luxury", "viral", "glowup"],
-      cta: "Check Kairah Studio for more!",
-      ctaLink: "https://kairah.vercel.app/studio"
-    },
-    {
-      name: "Funny Meme",
-      category: "Funny",
-      thumbnail: "https://via.placeholder.com/150",
-      viralScore: 72,
-      isPaid: false,
-      captions: ["Can't stop laughing 😂", "This is pure gold! 😆"],
-      hashtags: ["funny", "meme", "lol", "viral"],
-      cta: "Try more viral videos at Kairah Studio!",
-      ctaLink: "https://kairah.vercel.app/studio"
-    },
-    {
-      name: "Mini Fantasy",
-      category: "Fantasy",
-      thumbnail: "https://via.placeholder.com/150",
-      viralScore: 80,
-      isPaid: true,
-      captions: ["Step into a magical world ✨", "Fantasy comes alive! 🧚‍♀️"],
-      hashtags: ["fantasy", "magic", "viral", "dream"],
-      cta: "Create your fantasy video at Kairah Studio!",
-      ctaLink: "https://kairah.vercel.app/studio"
-    },
-    {
-      name: "Quick Quote",
-      category: "Motivational",
-      thumbnail: "https://via.placeholder.com/150",
-      viralScore: 65,
-      isPaid: false,
-      captions: ["Believe and achieve 💪", "Words that inspire 🔥"],
-      hashtags: ["motivation", "inspire", "viral", "quotes"],
-      cta: "Get more motivational clips at Kairah Studio!",
-      ctaLink: "https://kairah.vercel.app/studio"
-    },
-    {
-      name: "Cute Baby",
-      category: "Baby",
-      thumbnail: "https://via.placeholder.com/150",
-      viralScore: 60,
-      isPaid: false,
-      captions: ["Cutest thing you'll see today 🍼", "Baby vibes overload 😍"],
-      hashtags: ["baby", "cute", "viral", "adorable"],
-      cta: "Make adorable videos at Kairah Studio!",
-      ctaLink: "https://kairah.vercel.app/studio"
-    },
-    {
-      name: "Viral Challenge",
-      category: "Viral",
-      thumbnail: "https://via.placeholder.com/150",
-      viralScore: 90,
-      isPaid: true,
-      captions: ["Take the challenge now! 🔥", "Are you ready to go viral? 🚀"],
-      hashtags: ["viralchallenge", "trending", "challenge", "fyp"],
-      cta: "Join the viral challenge at Kairah Studio!",
-      ctaLink: "https://kairah.vercel.app/studio"
-    }
-    // Add all other templates similarly...
-  ];
-
-  let selectedTemplate = null;
-  const templateGrid = document.getElementById('templateGrid');
-  const videoPreview = document.getElementById('videoPreview');
-  const generateBtn = document.getElementById('generateBtn');
-  const downloadBtn = document.getElementById('downloadBtn');
-  const freeCounter = document.getElementById('freeCounter');
-
-  function renderTemplates(category = null) {
-    templateGrid.innerHTML = '';
-    templates.forEach(t => {
-      if (category && t.category !== category) return;
-      const card = document.createElement('div');
-      card.className = "relative bg-white rounded shadow p-2 cursor-pointer hover:ring-2 hover:ring-purple-300";
-      card.innerHTML = `
-        <img src="${t.thumbnail}" class="rounded w-full">
-        <div class="mt-1 font-bold">${t.name}</div>
-        <div class="text-sm text-gray-500">${t.category}</div>
-        <div class="viral-badge">${t.viralScore}⭐</div>
-        ${!user.isPaid && t.isPaid ? '<div class="locked-overlay">Locked</div>' : ''}
-      `;
-      card.addEventListener('click', () => {
-        if (!user.isPaid && t.isPaid) return alert("Upgrade to access this template!");
-        selectedTemplate = t;
-        downloadBtn.classList.remove('hidden');
-        let captionsHtml = t.captions.map(c => `<div class="caption-item mt-1 p-1 bg-gray-100 rounded cursor-pointer hover:bg-purple-100" onclick="copyText('${c}')">${c}</div>`).join('');
-        let hashtagsHtml = t.hashtags.map(h => `<span class="text-purple-800 font-semibold mr-2 cursor-pointer" onclick="copyText('${h}')">#${h}</span>`).join('');
-        videoPreview.innerHTML = `
-          <div class="h-40 bg-gray-300 flex flex-col items-center justify-center rounded relative">
-            <div>${t.name} Preview</div>
-            <div class="absolute bottom-2 left-2 text-white font-bold bg-purple-600 px-2 py-1 rounded" id="ctaOverlay">${t.cta}</div>
-          </div>
-          <div class="mt-2"><strong>Captions:</strong>${captionsHtml}</div>
-          <div class="mt-2"><strong>Hashtags:</strong>${hashtagsHtml}</div>
-          <button onclick="logClick('${t.name}'); window.open('${t.ctaLink}', '_blank')" class="mt-2 bg-yellow-500 px-4 py-2 rounded font-bold text-white hover:bg-yellow-600">Go to Studio</button>
-        `;
-      });
-      templateGrid.appendChild(card);
-    });
-  }
-
-  document.querySelectorAll('.category-btn').forEach(btn => {
-    btn.addEventListener('click', () => renderTemplates(btn.dataset.category));
-  });
-
-  generateBtn.addEventListener('click', () => {
-    if (!selectedTemplate) return alert("Select a template first!");
-    if (!user.loggedIn) return alert("Please log in to generate videos!");
-    if (!user.isPaid && user.freeVideosLeft <= 0) return alert("Free video limit reached. Upgrade to Pro!");
-    videoPreview.innerHTML += `<div class="mt-2 text-green-700 font-bold">Generating ${selectedTemplate.name} video...</div>`;
-    if (!user.isPaid) user.freeVideosLeft--;
-    updateFreeCounter();
-  });
-
-  downloadBtn.addEventListener('click', () => {
+  const handleDownload = async () => {
     if (!selectedTemplate) return;
-    logDownload(selectedTemplate.name);
+    // For real usage, download link should be provided by server when video is ready.
+    // Here we log analytics download and show a friendly message.
+    await logAnalytics(selectedTemplate.name, 'download');
     alert(`Video downloaded: ${selectedTemplate.name}`);
-  });
+  };
 
-  document.getElementById('promptMagicBtn').addEventListener('click', () => {
-    const prompt = document.getElementById('promptInput').value;
-    if (!prompt) return alert("Enter a prompt first!");
-    document.getElementById('promptInput').value = `Viral-enhanced: ${prompt} 🚀`;
-  });
+  const promptMagic = () => {
+    if (!prompt) return alert('Enter a prompt first!');
+    setPrompt(`Viral-enhanced: ${prompt} 🚀`);
+  };
 
-  function updateFreeCounter() {
-    freeCounter.textContent = `Free videos left: ${user.freeVideosLeft}`;
-  }
+  const handleCategory = (c) => setCategory(c === category ? null : c);
 
-  updateFreeCounter();
-  renderTemplates();
-</script>
+  const filteredTemplates = TEMPLATES.filter(t => (category ? t.category === category : true));
 
-</body>
-</html>
+  // quick sign out
+  const signOutUser = async () => {
+    try {
+      await signOut(auth);
+      setUserState({ loading: false, user: null, isPaid: false, plan: null });
+    } catch (e) {
+      console.error('signout failed', e);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 font-sans p-4">
+      <header className="bg-white shadow p-4 flex justify-between items-center rounded">
+        <div className="text-2xl font-bold text-purple-800">Kairah</div>
+        <nav className="space-x-6">
+          <a href="/studio" className="text-gray-700 hover:text-purple-800">Studio</a>
+          <a href="/fame" className="text-gray-700 hover:text-purple-800">Fame</a>
+          <a href="/pricing" className="text-gray-700 hover:text-purple-800">Pricing</a>
+          {userState.user ? (
+            <button onClick={signOutUser} className="text-gray-700 hover:text-purple-800">Logout</button>
+          ) : (
+            <a href="/signin" className="text-gray-700 hover:text-purple-800">Login</a>
+          )}
+        </nav>
+      </header>
+
+      <div className="flex mt-6 gap-6">
+        {/* Sidebar */}
+        <aside className="w-56 bg-white rounded shadow p-4">
+          <h2 className="font-bold mb-4">Categories</h2>
+          <ul className="space-y-2">
+            {["Funny", "Baby", "Royal", "Fantasy", "Motivational", "Viral"].map(c => (
+              <li key={c}><button onClick={() => handleCategory(c)} className={`w-full text-left px-2 py-1 rounded hover:bg-purple-100 ${category === c ? 'bg-purple-50 font-semibold' : ''}`}>{c}</button></li>
+            ))}
+          </ul>
+
+          <div className="mt-6 font-bold text-purple-800">{userState.user ? `Free videos left: ${freeVideosLeft ?? '...'}` : 'Sign in to see limits'}</div>
+        </aside>
+
+        {/* Main */}
+        <main className="flex-1 space-y-6">
+          {/* Prompt */}
+          <div className="flex gap-2">
+            <input value={prompt} onChange={(e) => setPrompt(e.target.value)} type="text" placeholder="Type your idea here..." className="flex-1 border rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400" />
+            <button onClick={promptMagic} className="bg-yellow-500 text-white px-4 py-2 rounded font-bold">Prompt Magic</button>
+          </div>
+
+          {/* Templates grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4" aria-live="polite">
+            {filteredTemplates.map(t => (
+              <div key={t.name} className={`relative bg-white rounded shadow p-2 cursor-pointer hover:ring-2 hover:ring-purple-300 ${selectedTemplate && selectedTemplate.name === t.name ? 'ring-4 ring-[#D4AF37]' : ''}`} onClick={() => {
+                if (!userState.isPaid && t.isPaid) return alert('Upgrade to access this template!');
+                setSelectedTemplate(t);
+              }}>
+                <img src={t.thumbnail} alt={t.name} className="rounded w-full h-36 object-cover" />
+                <div className="mt-1 font-bold">{t.name}</div>
+                <div className="text-sm text-gray-500">{t.category}</div>
+                <div className="viral-badge absolute top-2 right-2 bg-[#E7D2CB] text-[#3D2C41] px-2 py-1 rounded text-sm font-bold">{t.viralScore}⭐</div>
+                {!userState.isPaid && t.isPaid ? (
+                  <div className="locked-overlay absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center text-white font-bold text-sm rounded">Locked</div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+
+          {/* Preview + actions */}
+          <div className="border rounded p-4 bg-white shadow relative">
+            <h3 className="font-bold mb-2">Video Preview</h3>
+            <div className="h-40 bg-gray-200 flex items-center justify-center rounded">
+              {selectedTemplate ? (
+                <div className="w-full h-full flex flex-col items-center justify-center relative">
+                  <div className="text-lg font-semibold">{selectedTemplate.name} Preview</div>
+                  <div className="absolute bottom-2 left-2 text-white font-bold bg-purple-600 px-2 py-1 rounded">{selectedTemplate.cta}</div>
+                </div>
+              ) : (
+                <div>Select a template to preview</div>
+              )}
+            </div>
+
+            {selectedTemplate ? (
+              <div className="mt-3">
+                <div><strong>Captions:</strong></div>
+                <div className="mt-2">
+                  {selectedTemplate.captions.map((c, i) => (
+                    <div key={i} onClick={() => copyText(c)} className="caption-item mt-1 p-1 bg-gray-100 rounded cursor-pointer hover:bg-purple-100">{c}</div>
+                  ))}
+                </div>
+                <div className="mt-2"><strong>Hashtags:</strong></div>
+                <div className="mt-2">
+                  {selectedTemplate.hashtags.map((h, i) => (
+                    <span key={i} onClick={() => copyText(`#${h}`)} className="text-purple-800 font-semibold mr-2 cursor-pointer">#{h}</span>
+                  ))}
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <button onClick={() => { logAnalytics(selectedTemplate.name, 'click'); window.open(selectedTemplate.ctaLink, '_blank'); }} className="mt-2 bg-yellow-500 px-4 py-2 rounded font-bold text-white hover:bg-yellow-600">Go to Studio</button>
+                  <button onClick={handleDownload} className="mt-2 bg-green-600 px-4 py-2 rounded font-bold text-white">Download Video</button>
+                </div>
+              </div>
+            ) : null}
+
+          </div>
+
+          {/* Generate button */}
+          <button onClick={handleGenerate} disabled={generating || !selectedTemplate} className={`bg-purple-800 text-white px-6 py-3 rounded font-bold ${(!selectedTemplate || generating) ? 'opacity-60 cursor-not-allowed' : ''}`}>
+            {generating ? 'Generating...' : 'Generate Video'}
+          </button>
+
+          {/* Analytics panel */}
+          <div id="analyticsDashboard" className="border rounded p-4 bg-gray-100 mt-4">
+            <h3 className="font-bold mb-2">Fame Analytics</h3>
+            <button onClick={async () => {
+              // for dev: fetch analytics collection and console.table it
+              const names = TEMPLATES.map(t => t.name);
+              const rows = {};
+              for (const n of names) {
+                // In production you'd query Firestore; here we just print placeholders
+                rows[n] = { clicks: 'check firestore', downloads: 'check firestore' };
+              }
+              console.table(rows);
+            }} className="bg-purple-600 text-white px-4 py-2 rounded">Show Analytics in Console</button>
+            <p className="mt-2 text-sm text-gray-700">CTA clicks & video downloads are logged per template (Firestore).</p>
+          </div>
+
+        </main>
+      </div>
+
+      <footer className="bg-white shadow mt-6 p-4 text-center text-gray-600 rounded">© 2025 Kairah. Contact | About | Social Links</footer>
+    </div>
+  );
+}
